@@ -52,6 +52,36 @@ class OwnerController {
 
 	private final OwnerRepository owners;
 
+	private static OwnerDto toDto(Owner owner) {
+		OwnerDto dto = new OwnerDto();
+		dto.setId(owner.getId());
+		dto.setFirstName(owner.getFirstName());
+		dto.setLastName(owner.getLastName());
+		dto.setAddress(owner.getAddress());
+		dto.setCity(owner.getCity());
+		dto.setTelephone(owner.getTelephone());
+		return dto;
+	}
+
+	private static Owner toOwner(OwnerDto dto) {
+		Owner owner = new Owner();
+		owner.setId(dto.getId());
+		owner.setFirstName(dto.getFirstName());
+		owner.setLastName(dto.getLastName());
+		owner.setAddress(dto.getAddress());
+		owner.setCity(dto.getCity());
+		owner.setTelephone(dto.getTelephone());
+		return owner;
+	}
+
+	private static void updateOwnerFromDto(OwnerDto dto, Owner owner) {
+		owner.setFirstName(dto.getFirstName());
+		owner.setLastName(dto.getLastName());
+		owner.setAddress(dto.getAddress());
+		owner.setCity(dto.getCity());
+		owner.setTelephone(dto.getTelephone());
+	}
+
 	public OwnerController(OwnerRepository owners) {
 		this.owners = owners;
 	}
