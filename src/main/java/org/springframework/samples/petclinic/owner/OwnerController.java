@@ -49,6 +49,8 @@ class OwnerController {
 
 	private static final String VIEWS_OWNER_CREATE_OR_UPDATE_FORM = "owners/createOrUpdateOwnerForm";
 
+	private static final String OWNER_NOT_FOUND_MESSAGE = "Owner not found with id: ";
+
 	private final OwnerRepository owners;
 
 	private static OwnerDto toDto(Owner owner) {
@@ -113,7 +115,7 @@ class OwnerController {
 	public OwnerDto findOwner(@PathVariable(name = "ownerId", required = false) Integer ownerId) {
 		return ownerId == null ? new OwnerDto()
 				: toDto(this.owners.findById(ownerId)
-					.orElseThrow(() -> new IllegalArgumentException("Owner not found with id: " + ownerId
+					.orElseThrow(() -> new IllegalArgumentException(OWNER_NOT_FOUND_MESSAGE + ownerId
 							+ ". Please ensure the ID is correct " + "and the owner exists in the database.")));
 	}
 
@@ -205,7 +207,7 @@ class OwnerController {
 		}
 
 		Owner owner = owners.findById(ownerId)
-			.orElseThrow(() -> new IllegalArgumentException("Owner not found with id: " + ownerId));
+			.orElseThrow(() -> new IllegalArgumentException(OWNER_NOT_FOUND_MESSAGE + ownerId));
 		updateOwnerFromDto(dto, owner);
 		this.owners.save(owner);
 		redirectAttributes.addFlashAttribute("message", "Owner Values Updated");
@@ -222,7 +224,7 @@ class OwnerController {
 		ModelAndView mav = new ModelAndView("owners/ownerDetails");
 		Owner owner = this.owners.findById(ownerId)
 			.orElseThrow(() -> new IllegalArgumentException(
-					"Owner not found with id: " + ownerId + ". Please ensure the ID is correct "));
+					OWNER_NOT_FOUND_MESSAGE + ownerId + ". Please ensure the ID is correct "));
 		mav.addObject("owner", toDto(owner));
 		return mav;
 	}
