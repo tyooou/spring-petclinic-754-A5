@@ -52,31 +52,32 @@ public class I18nPropertiesSyncTest {
 
 		for (Path file : files) {
 			try (Stream<String> lines = Files.lines(file)) {
-                return lines.anyMatch(line -> line.contains(key));
-            }
-			for (int i = 0; i < lines.size(); i++) {
-				String line = lines.get(i).trim();
+				int[] lineNumber = { 0 };
+				lines.forEach(rawLine -> {
+					lineNumber[0]++;
+					String line = rawLine.trim();
 
-				if (line.startsWith("//") || line.startsWith("@") || line.contains("log.")
-						|| line.contains("System.out")) {
-					continue;
-				}
-
-				if (file.toString().endsWith(".html")) {
-					boolean hasLiteralText = HTML_TEXT_LITERAL.matcher(line).find();
-					boolean hasThTextAttribute = HAS_TH_TEXT_ATTRIBUTE.matcher(line).find();
-					boolean isBracketOnly = BRACKET_ONLY.matcher(line).find();
-
-					if (hasLiteralText && !line.contains("#{") && !hasThTextAttribute && !isBracketOnly) {
-						report.append("HTML: ")
-							.append(file)
-							.append(" Line ")
-							.append(i + 1)
-							.append(": ")
-							.append(line)
-							.append("\n");
+					if (line.startsWith("//") || line.startsWith("@") || line.contains("log.")
+							|| line.contains("System.out")) {
+						return;
 					}
-				}
+
+					if (file.toString().endsWith(".html")) {
+						boolean hasLiteralText = HTML_TEXT_LITERAL.matcher(line).find();
+						boolean hasThTextAttribute = HAS_TH_TEXT_ATTRIBUTE.matcher(line).find();
+						boolean isBracketOnly = BRACKET_ONLY.matcher(line).find();
+
+						if (hasLiteralText && !line.contains("#{") && !hasThTextAttribute && !isBracketOnly) {
+							report.append("HTML: ")
+								.append(file)
+								.append(" Line ")
+								.append(lineNumber[0])
+								.append(": ")
+								.append(line)
+								.append("\n");
+						}
+					}
+				});
 			}
 		}
 
