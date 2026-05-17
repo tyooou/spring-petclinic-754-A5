@@ -232,7 +232,7 @@ class OwnerControllerTests {
 	void processUpdateOwnerFormWithIdMismatch() throws Exception {
 		int pathOwnerId = 1;
 
-		Owner owner = new Owner();
+		OwnerDto owner = new OwnerDto();
 		owner.setId(2);
 		owner.setFirstName("John");
 		owner.setLastName("Doe");
@@ -240,7 +240,7 @@ class OwnerControllerTests {
 		owner.setCity("New York");
 		owner.setTelephone("0123456789");
 
-		when(owners.findById(pathOwnerId)).thenReturn(Optional.of(owner));
+		when(owners.findById(pathOwnerId)).thenReturn(Optional.of(george()));
 
 		mockMvc.perform(MockMvcRequestBuilders.post("/owners/{ownerId}/edit", pathOwnerId).flashAttr("owner", owner))
 			.andExpect(status().is3xxRedirection())
