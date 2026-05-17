@@ -51,9 +51,10 @@ public class I18nPropertiesSyncTest {
 		StringBuilder report = new StringBuilder();
 
 		for (Path file : files) {
-			try (Stream<String> lines = Files.lines(file)) {
-                return lines.anyMatch(line -> line.contains(key));
-            }
+			List<String> lines;
+			try (Stream<String> lineStream = Files.lines(file)) {
+				lines = lineStream.toList();
+			}
 			for (int i = 0; i < lines.size(); i++) {
 				String line = lines.get(i).trim();
 
