@@ -74,9 +74,7 @@ class VisitController {
 		model.put("pet", pet);
 		model.put("owner", owner);
 
-		Visit visit = new Visit();
-		pet.addVisit(visit);
-		return visit;
+		return new Visit();
 	}
 
 	// Spring MVC calls method loadPetWithVisit(...) before initNewVisitForm is
