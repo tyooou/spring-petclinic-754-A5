@@ -39,6 +39,9 @@ import jakarta.validation.Valid;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
+ * Handles HTTP requests related to {@link Owner} management, including creation, search,
+ * update, and detail display. Supports paginated search by last name.
+ *
  * @author Juergen Hoeller
  * @author Ken Krebs
  * @author Arjen Poutsma
@@ -56,11 +59,22 @@ class OwnerController {
 		this.owners = owners;
 	}
 
+	/**
+	 * Prevents binding of {@code id} fields to guard against mass-assignment attacks.
+	 * @param dataBinder the data binder to configure
+	 */
 	@InitBinder
 	public void setAllowedFields(WebDataBinder dataBinder) {
 		dataBinder.setDisallowedFields("id", "*.id");
 	}
 
+	/**
+	 * Resolves the {@link Owner} model attribute for requests that include an
+	 * {@code ownerId} path variable. Returns a new, empty {@link Owner} when no ID is
+	 * present (e.g. during owner creation).
+	 * @param ownerId the owner's primary key, or {@code null} on creation forms
+	 * @return the existing owner, or a new {@link Owner} instance
+	 */
 	@ModelAttribute("owner")
 	public Owner findOwner(@PathVariable(name = "ownerId", required = false) Integer ownerId) {
 		return ownerId == null ? new Owner()
@@ -69,11 +83,23 @@ class OwnerController {
 							+ ". Please ensure the ID is correct " + "and the owner exists in the database."));
 	}
 
+	/**
+	 * Displays the owner creation form.
+	 * @return the logical view name for the create/update form
+	 */
 	@GetMapping("/owners/new")
 	public String initCreationForm() {
 		return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
 	}
 
+	/**
+	 * Validates and persists a new owner. Redirects to the owner's detail page on
+	 * success, or returns the form with an error message on validation failure.
+	 * @param owner the owner to create, populated from the submitted form
+	 * @param result binding and validation results
+	 * @param redirectAttributes flash attributes for the redirect
+	 * @return a redirect to the new owner's detail page, or the form view on error
+	 */
 	@PostMapping("/owners/new")
 	public String processCreationForm(@Valid Owner owner, BindingResult result, RedirectAttributes redirectAttributes) {
 		if (result.hasErrors()) {
@@ -86,11 +112,25 @@ class OwnerController {
 		return "redirect:/owners/" + owner.getId();
 	}
 
+	/**
+	 * Displays the owner search form.
+	 * @return the logical view name for the find-owners page
+	 */
 	@GetMapping("/owners/find")
 	public String initFindForm() {
 		return "owners/findOwners";
 	}
 
+	/**
+	 * Searches owners by last name with pagination. Redirects directly to the owner
+	 * detail page when exactly one match is found, or lists all matches when multiple
+	 * owners are returned. An empty last name returns all owners.
+	 * @param page the 1-based page number to display (defaults to 1)
+	 * @param owner used to extract the last-name search criterion
+	 * @param result binding result used to report "not found" errors
+	 * @param model the model to populate with paginated results
+	 * @return a redirect to the single match, the list view, or the search form on error
+	 */
 	@GetMapping("/owners")
 	public String processFindForm(@RequestParam(defaultValue = "1") int page, Owner owner, BindingResult result,
 			Model model) {
@@ -118,6 +158,13 @@ class OwnerController {
 		return addPaginationModel(page, model, ownersResults);
 	}
 
+	/**
+	 * Adds paginated owner data to the model and returns the owner list view.
+	 * @param page the current 1-based page number
+	 * @param model the model to populate
+	 * @param paginated the paginated owners result
+	 * @return the logical view name for the owners list page
+	 */
 	private String addPaginationModel(int page, Model model, Page<Owner> paginated) {
 		List<Owner> listOwners = paginated.getContent();
 		model.addAttribute("currentPage", page);
@@ -127,17 +174,37 @@ class OwnerController {
 		return "owners/ownersList";
 	}
 
+	/**
+	 * Queries for a page of owners whose last name starts with the given prefix.
+	 * @param page the 1-based page number
+	 * @param lastname the last-name prefix to filter by (empty string returns all)
+	 * @return a page of matching {@link Owner} records
+	 */
 	private Page<Owner> findPaginatedForOwnersLastName(int page, String lastname) {
 		int pageSize = 5;
 		Pageable pageable = PageRequest.of(page - 1, pageSize);
 		return owners.findByLastNameStartingWith(lastname, pageable);
 	}
 
+	/**
+	 * Displays the owner update form, pre-populated with the current owner data resolved
+	 * by {@link #findOwner}.
+	 * @return the logical view name for the create/update form
+	 */
 	@GetMapping("/owners/{ownerId}/edit")
 	public String initUpdateOwnerForm() {
 		return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
 	}
 
+	/**
+	 * Validates and persists changes to an existing owner. Verifies that the form's owner
+	 * ID matches the URL path variable before saving.
+	 * @param owner the updated owner data from the submitted form
+	 * @param result binding and validation results
+	 * @param ownerId the owner's primary key from the URL path
+	 * @param redirectAttributes flash attributes for the redirect
+	 * @return a redirect to the owner's detail page, or the form view on error
+	 */
 	@PostMapping("/owners/{ownerId}/edit")
 	public String processUpdateOwnerForm(@Valid Owner owner, BindingResult result, @PathVariable("ownerId") int ownerId,
 			RedirectAttributes redirectAttributes) {
