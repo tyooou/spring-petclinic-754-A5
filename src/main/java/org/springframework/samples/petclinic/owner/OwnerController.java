@@ -17,7 +17,6 @@ package org.springframework.samples.petclinic.owner;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -50,7 +49,58 @@ class OwnerController {
 
 	private static final String VIEWS_OWNER_CREATE_OR_UPDATE_FORM = "owners/createOrUpdateOwnerForm";
 
+	private static final String OWNER_NOT_FOUND_MESSAGE = "Owner not found with id: ";
+
 	private final OwnerRepository owners;
+
+	private static OwnerDto toDto(Owner owner) {
+		OwnerDto dto = new OwnerDto();
+		dto.setId(owner.getId());
+		dto.setFirstName(owner.getFirstName());
+		dto.setLastName(owner.getLastName());
+		dto.setAddress(owner.getAddress());
+		dto.setCity(owner.getCity());
+		dto.setTelephone(owner.getTelephone());
+		dto.setPets(owner.getPets().stream().map(OwnerController::toDto).toList());
+		return dto;
+	}
+
+	private static OwnerDto.PetDto toDto(Pet pet) {
+		OwnerDto.PetDto dto = new OwnerDto.PetDto();
+		dto.setId(pet.getId());
+		dto.setName(pet.getName());
+		dto.setBirthDate(pet.getBirthDate());
+		dto.setType(pet.getType() != null ? pet.getType().getName() : null);
+		dto.setVisits(pet.getVisits().stream().map(OwnerController::toDto).toList());
+		return dto;
+	}
+
+	private static OwnerDto.VisitDto toDto(Visit visit) {
+		OwnerDto.VisitDto dto = new OwnerDto.VisitDto();
+		dto.setId(visit.getId());
+		dto.setDate(visit.getDate());
+		dto.setDescription(visit.getDescription());
+		return dto;
+	}
+
+	private static Owner toOwner(OwnerDto dto) {
+		Owner owner = new Owner();
+		owner.setId(dto.getId());
+		owner.setFirstName(dto.getFirstName());
+		owner.setLastName(dto.getLastName());
+		owner.setAddress(dto.getAddress());
+		owner.setCity(dto.getCity());
+		owner.setTelephone(dto.getTelephone());
+		return owner;
+	}
+
+	private static void updateOwnerFromDto(OwnerDto dto, Owner owner) {
+		owner.setFirstName(dto.getFirstName());
+		owner.setLastName(dto.getLastName());
+		owner.setAddress(dto.getAddress());
+		owner.setCity(dto.getCity());
+		owner.setTelephone(dto.getTelephone());
+	}
 
 	public OwnerController(OwnerRepository owners) {
 		this.owners = owners;
@@ -62,11 +112,11 @@ class OwnerController {
 	}
 
 	@ModelAttribute("owner")
-	public Owner findOwner(@PathVariable(name = "ownerId", required = false) Integer ownerId) {
-		return ownerId == null ? new Owner()
-				: this.owners.findById(ownerId)
-					.orElseThrow(() -> new IllegalArgumentException("Owner not found with id: " + ownerId
-							+ ". Please ensure the ID is correct " + "and the owner exists in the database."));
+	public OwnerDto findOwner(@PathVariable(name = "ownerId", required = false) Integer ownerId) {
+		return ownerId == null ? new OwnerDto()
+				: toDto(this.owners.findById(ownerId)
+					.orElseThrow(() -> new IllegalArgumentException(OWNER_NOT_FOUND_MESSAGE + ownerId
+							+ ". Please ensure the ID is correct " + "and the owner exists in the database.")));
 	}
 
 	@GetMapping("/owners/new")
@@ -75,12 +125,14 @@ class OwnerController {
 	}
 
 	@PostMapping("/owners/new")
-	public String processCreationForm(@Valid Owner owner, BindingResult result, RedirectAttributes redirectAttributes) {
+	public String processCreationForm(@Valid @ModelAttribute("owner") OwnerDto dto, BindingResult result,
+			RedirectAttributes redirectAttributes) {
 		if (result.hasErrors()) {
 			redirectAttributes.addFlashAttribute("error", "There was an error in creating the owner.");
 			return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
 		}
 
+		Owner owner = toOwner(dto);
 		this.owners.save(owner);
 		redirectAttributes.addFlashAttribute("message", "New Owner Created");
 		return "redirect:/owners/" + owner.getId();
@@ -92,10 +144,10 @@ class OwnerController {
 	}
 
 	@GetMapping("/owners")
-	public String processFindForm(@RequestParam(defaultValue = "1") int page, Owner owner, BindingResult result,
-			Model model) {
+	public String processFindForm(@RequestParam(defaultValue = "1") int page, @ModelAttribute("owner") OwnerDto dto,
+			BindingResult result, Model model) {
 		// allow parameterless GET request for /owners to return all records
-		String lastName = owner.getLastName();
+		String lastName = dto.getLastName();
 		if (lastName == null) {
 			lastName = ""; // empty string signifies broadest possible search
 		}
@@ -110,7 +162,7 @@ class OwnerController {
 
 		if (ownersResults.getTotalElements() == 1) {
 			// 1 owner found
-			owner = ownersResults.iterator().next();
+			Owner owner = ownersResults.iterator().next();
 			return "redirect:/owners/" + owner.getId();
 		}
 
@@ -119,7 +171,7 @@ class OwnerController {
 	}
 
 	private String addPaginationModel(int page, Model model, Page<Owner> paginated) {
-		List<Owner> listOwners = paginated.getContent();
+		List<OwnerDto> listOwners = paginated.getContent().stream().map(OwnerController::toDto).toList();
 		model.addAttribute("currentPage", page);
 		model.addAttribute("totalPages", paginated.getTotalPages());
 		model.addAttribute("totalItems", paginated.getTotalElements());
@@ -134,25 +186,29 @@ class OwnerController {
 	}
 
 	@GetMapping("/owners/{ownerId}/edit")
-	public String initUpdateOwnerForm() {
+	public String initUpdateOwnerForm(@PathVariable("ownerId") int ownerId, Model model) {
+		OwnerDto ownerDto = findOwner(ownerId);
+		model.addAttribute("owner", ownerDto);
 		return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
 	}
 
 	@PostMapping("/owners/{ownerId}/edit")
-	public String processUpdateOwnerForm(@Valid Owner owner, BindingResult result, @PathVariable("ownerId") int ownerId,
-			RedirectAttributes redirectAttributes) {
+	public String processUpdateOwnerForm(@Valid @ModelAttribute("owner") OwnerDto dto, BindingResult result,
+			@PathVariable("ownerId") int ownerId, RedirectAttributes redirectAttributes) {
 		if (result.hasErrors()) {
 			redirectAttributes.addFlashAttribute("error", "There was an error in updating the owner.");
 			return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
 		}
 
-		if (!Objects.equals(owner.getId(), ownerId)) {
+		if (!Objects.equals(dto.getId(), ownerId)) {
 			result.rejectValue("id", "mismatch", "The owner ID in the form does not match the URL.");
 			redirectAttributes.addFlashAttribute("error", "Owner ID mismatch. Please try again.");
 			return "redirect:/owners/{ownerId}/edit";
 		}
 
-		owner.setId(ownerId);
+		Owner owner = owners.findById(ownerId)
+			.orElseThrow(() -> new IllegalArgumentException(OWNER_NOT_FOUND_MESSAGE + ownerId));
+		updateOwnerFromDto(dto, owner);
 		this.owners.save(owner);
 		redirectAttributes.addFlashAttribute("message", "Owner Values Updated");
 		return "redirect:/owners/{ownerId}";
@@ -166,10 +222,10 @@ class OwnerController {
 	@GetMapping("/owners/{ownerId}")
 	public ModelAndView showOwner(@PathVariable("ownerId") int ownerId) {
 		ModelAndView mav = new ModelAndView("owners/ownerDetails");
-		Optional<Owner> optionalOwner = this.owners.findById(ownerId);
-		Owner owner = optionalOwner.orElseThrow(() -> new IllegalArgumentException(
-				"Owner not found with id: " + ownerId + ". Please ensure the ID is correct "));
-		mav.addObject(owner);
+		Owner owner = this.owners.findById(ownerId)
+			.orElseThrow(() -> new IllegalArgumentException(
+					OWNER_NOT_FOUND_MESSAGE + ownerId + ". Please ensure the ID is correct "));
+		mav.addObject("owner", toDto(owner));
 		return mav;
 	}
 
